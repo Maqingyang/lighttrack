@@ -1,4 +1,6 @@
 *.ckpt*
+*.mp4
+*.jpg
 *.pt
 *.so
 *.pyc
@@ -8,3 +10,12 @@
 *.weights
 *.DS_Store
 delete_for_now/
+*.pickle
+*.egg
+*.andriluk
+*.history
+*.txt
+*.avi
+*.png
+log
+*.tar.gz

@@ -11,4 +11,4 @@ model_args:
     strategy: 'spatial'
 
 # testing
-device: [0]
+device: [1]

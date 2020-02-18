@@ -153,10 +153,14 @@ def Preprocessing(d, raw_img = None, stage='train'):
 
     if raw_img is None:
         #img = cv2.imread(os.path.join(cfg.img_path, d['imgpath']))
-        img = cv2.imread(os.path.join(d['imgpath']))
+        new_path = os.path.join(d['imgpath']).replace('/export/guanghan/','/project/lighttrack/data/')
+        # img = cv2.imread(os.path.join(d['imgpath']))
+        img = cv2.imread(new_path)
         while img is None:
-            time.sleep(np.random.rand() * 5)
-            img = cv2.imread(os.path.join(cfg.img_path, d['imgpath']))
+            print("img %s is None!" %os.path.join(new_path))
+            img = cv2.imread(new_path)
+            # time.sleep(np.random.rand() * 5)
+            # img = cv2.imread(os.path.join(cfg.img_path, d['imgpath']))
     else:
         img = raw_img
 

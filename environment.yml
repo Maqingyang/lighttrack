@@ -11,8 +11,8 @@ dependencies:
   - blas=1.0=mkl
   - bleach=1.5.0=py36_0
   - cairo=1.14.12=h77bcde2_0
-  - cudatoolkit=9.0=h13b8566_0
-  - cudnn=7.1.2=cuda9.0_0
+  # - cudatoolkit=9.0=h13b8566_0
+  # - cudnn=7.1.2=cuda9.0_0
   - cupti=9.0.176=0
   - cycler=0.10.0=py36_0
   - gast=0.2.0=py36_0
@@ -72,7 +72,7 @@ dependencies:
   - hdf5=1.10.2=0
   - icu=58.2=0
   - jasper=1.900.1=4
-  - jpeg=9b=2
+    #  - jpeg=9b=2
   - kiwisolver=1.0.1=py36_1
   - libpng=1.6.34=0
   - libtiff=4.0.9
@@ -123,8 +123,8 @@ dependencies:
     - shapely==1.6.4.post1
     - tabulate==0.8.2
     - toolz==0.9.0
-    - torch==1.0.1.post2
-    - torchvision==0.2.2.post3
+    # - torch==1.0.1.post2
+    # - torchvision==0.2.2.post3
     - tqdm==4.23.4
     - zope.interface==4.5.0
 prefix: /root/anaconda2/envs/py36

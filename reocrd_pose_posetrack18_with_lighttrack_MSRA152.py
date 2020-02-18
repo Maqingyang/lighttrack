@@ -34,8 +34,6 @@ from utils_json import *
 from visualizer import *
 from utils_io_folder import *
 
-flag_visualize = True
-flag_nms = False #Default is False, unless you know what you are doing
 
 
 def parse_args():
@@ -168,7 +166,7 @@ def light_track(pose_estimator,
                 # obtain keypoints for each bbox position in the keyframe
                 keypoints = inference_keypoints(pose_estimator, bbox_det_dict)[0]["keypoints"]
                 keypoints_gt = keypoints
-
+                precomputed_dets[img_id][det_id]['keypoints'] = keypoints
                 if img_id == 0:
                     track_id = next_id
                     next_id += 1
@@ -207,97 +205,21 @@ def light_track(pose_estimator,
             frame_prev = frame_cur
 
         else:
-            ''' NOT KEYFRAME: multi-target pose tracking '''
-            bbox_dets_list_next = []
-            keypoints_list_next = []
+           raise Exception("There is non-keyframe!")
+    
+    write_json_to_file()
+    # # convert results into openSVAI format
+    # print("Export results in openSVAI standard format...")
+    # poses_standard = pose_to_standard_mot(keypoints_list_list, bbox_dets_list_list)
+    # #json_str = python_to_json(poses_standard)
+    # #print(json_str)
 
-            num_dets = len(keypoints_list)
+    # # output json file
+    # pose_json_folder, _ = get_parent_folder_from_path(output_json_path)
+    # create_folder(pose_json_folder)
+    # write_json_to_file(poses_standard, output_json_path)
 
-            if num_dets == 0:
-                flag_mandatory_keyframe = True
 
-            for det_id in range(num_dets):
-                keypoints = keypoints_list[det_id]["keypoints"]
-
-                # for non-keyframes, the tracked target preserves its track_id
-                track_id = keypoints_list[det_id]["track_id"]
-
-                # next frame bbox
-                bbox_det_next = get_bbox_from_keypoints(keypoints)
-                if bbox_det_next[2] == 0 or bbox_det_next[3] == 0:
-                    bbox_det_next = [0, 0, 2, 2]
-                assert(bbox_det_next[2] != 0 and bbox_det_next[3] != 0) # width and height must not be zero
-                bbox_det_dict_next = {"img_id":img_id,
-                                     "det_id":det_id,
-                                     "track_id":track_id,
-                                     "imgpath": img_path,
-                                     "bbox":bbox_det_next}
-
-                # next frame keypoints
-                keypoints_next = inference_keypoints(pose_estimator, bbox_det_dict_next)[0]["keypoints"]
-
-                # check whether the target is lost
-                target_lost = is_target_lost(keypoints_next)
-
-                if target_lost is False:
-                    bbox_dets_list_next.append(bbox_det_dict_next)
-                    keypoints_dict_next = {"img_id":img_id,
-                                           "det_id":det_id,
-                                           "track_id":track_id,
-                                           "imgpath": img_path,
-                                           "keypoints":keypoints_next}
-                    keypoints_list_next.append(keypoints_dict_next)
-
-                else:
-                    # remove this bbox, do not register its keypoints
-                    bbox_det_dict_next = {"img_id":img_id,
-                                          "det_id":  det_id,
-                                          "track_id": -1,
-                                          "imgpath": img_path,
-                                          "bbox": [0, 0, 2, 2]}
-                    bbox_dets_list_next.append(bbox_det_dict_next)
-
-                    keypoints_null = 45*[0]
-                    keypoints_dict_next = {"img_id":img_id,
-                                           "det_id":det_id,
-                                           "track_id":track_id,
-                                           "imgpath": img_path,
-                                           "keypoints": []}
-                    keypoints_list_next.append(keypoints_dict_next)
-                    print("Target lost. Process this frame again as keyframe. \n\n\n")
-                    flag_mandatory_keyframe = True
-
-                    if img_id not in [0]:
-                        img_id -= 1
-                    break
-
-            # update frame
-            if flag_mandatory_keyframe is False:
-                bbox_dets_list = bbox_dets_list_next
-                keypoints_list = keypoints_list_next
-                bbox_dets_list_list.append(bbox_dets_list)
-                keypoints_list_list.append(keypoints_list)
-                frame_prev = frame_cur
-
-    # convert results into openSVAI format
-    print("Export results in openSVAI standard format...")
-    poses_standard = pose_to_standard_mot(keypoints_list_list, bbox_dets_list_list)
-    #json_str = python_to_json(poses_standard)
-    #print(json_str)
-
-    # output json file
-    pose_json_folder, _ = get_parent_folder_from_path(output_json_path)
-    create_folder(pose_json_folder)
-    write_json_to_file(poses_standard, output_json_path)
-
-    # visualization
-    if flag_visualize is True:
-        create_folder(visualize_folder)
-        show_all_from_standard_json(output_json_path, classes, joint_pairs, joint_names, image_folder, visualize_folder, flag_track = True)
-        print("Pose Estimation Finished!")
-
-        img_paths = get_immediate_childfile_paths(visualize_folder)
-        make_video_from_images(img_paths, output_video_path, fps=10, size=None, is_color=True, format="XVID")
 
 
 def get_track_id_SGCN(bbox_gt, bbox_dets_list_list, keypoints_gt, keypoints_list_list, img_id):
@@ -792,11 +714,9 @@ def bbox_invalid(bbox):
 
 if __name__ == '__main__':
 
-    # import os
-    # os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID" # see issue #152
-    # os.environ["CUDA_VISIBLE_DEVICES"]="1"
 
-
+    flag_visualize = False
+    flag_nms = False #Default is False, unless you know what you are doing
     global args
     args = parse_args()
 
@@ -811,7 +731,6 @@ if __name__ == '__main__':
         if args.det_or_gt == "gt":
             detections_openSVAI_folder = "data/Data_2018/posetrack_data/annotations_openSVAI/"
         elif args.det_or_gt == "det":
-            # detections_openSVAI_folder = "data/Data_2018/posetrack_data/detections_openSVAI/"
             detections_openSVAI_folder = "DeformConv_FPN_RCNN_detect_CPN_format"
 
         output_json_folder = "data/Data_2018/posetrack_results/lighttrack/results_openSVAI/"

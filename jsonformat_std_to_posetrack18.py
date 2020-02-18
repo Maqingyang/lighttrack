@@ -152,9 +152,10 @@ def standard_to_PoseTrack_17(standard_keypoints_ret, gt_python_data, mode_track 
 
 def batch_standard_to_PoseTrack_17(dataset_split = "light_track", mode = "pose", bbox_thresh = 0, drop_thresh = 0):
     if dataset_split == "light_track":
+        input_json_folder_base = "data/Data_2018/posetrack_results/lighttrack/results_bbox_3d_openSVAI_new"
         gt_json_folder_base = "data/Data_2018/posetrack_data/annotations/val"
-        input_json_folder_base = "data/Data_2018/posetrack_results/lighttrack/results_openSVAI"
-        output_json_folder_base = "data/Data_2018/predictions_lighttrack/"
+        # output_json_folder_base = "data/Data_2018/predictions_lighttrack/"
+        output_json_folder_base = "data/Data_2018/predictions_lighttrack_bbox_3d_new/"
 
     gt_json_file_paths = get_immediate_childfile_paths(gt_json_folder_base, ext=".json")
     for gt_json_file_path in gt_json_file_paths:
@@ -178,9 +179,10 @@ def batch_standard_to_PoseTrack_17(dataset_split = "light_track", mode = "pose",
 
 def batch_standard_to_PoseTrack_18(dataset_split = "val", mode = "pose", bbox_thresh = 0):
     if dataset_split == "light_track":
-        input_json_folder_base = "data/Data_2018/posetrack_results/lighttrack/results_openSVAI"
+        input_json_folder_base = "data/Data_2018/posetrack_results/lighttrack/results_bbox_3d_openSVAI"
         gt_json_folder_base = "data/Data_2018/posetrack_data/annotations/val"
-        output_json_folder_base = "data/Data_2018/predictions_lighttrack/"
+        # output_json_folder_base = "data/Data_2018/predictions_lighttrack/"
+        output_json_folder_base = "data/Data_2018/predictions_lighttrack_bbox_3d/"
 
     gt_json_file_paths = get_immediate_childfile_paths(gt_json_folder_base, ext=".json")
     for gt_json_file_path in gt_json_file_paths:

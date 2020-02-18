@@ -7,9 +7,11 @@
 import argparse
 
 # import vision essentials
+import os.path as osp
 import cv2
 import numpy as np
 import tensorflow as tf
+
 
 # import Network
 from network_MSRA152 import Network
@@ -21,7 +23,7 @@ from tfflat.base import Tester
 from tfflat.utils import mem_info
 from tfflat.logger import colorlogger
 from nms.gpu_nms import gpu_nms
-from nms.cpu_nms import cpu_nms
+# from nms.cpu_nms import cpu_nms
 
 # import GCN utils
 from graph import visualize_pose_matching
@@ -34,8 +36,7 @@ from utils_json import *
 from visualizer import *
 from utils_io_folder import *
 
-flag_visualize = True
-flag_nms = False #Default is False, unless you know what you are doing
+
 
 
 def parse_args():
@@ -73,7 +74,6 @@ def light_track(pose_estimator,
     precomputed_dets = load_det_from_CPNformat(annotation_json_file_path)  # mode 2
     num_imgs = len(precomputed_dets)
 
-
     # process the frames sequentially
     keypoints_list = []
     bbox_dets_list = []
@@ -86,7 +86,6 @@ def light_track(pose_estimator,
     flag_mandatory_keyframe = False
     img_id = -1
     while img_id < num_imgs-1:
-
         img_id += 1
         gt_data = precomputed_dets[img_id]
 
@@ -124,7 +123,9 @@ def light_track(pose_estimator,
                                   "det_id":  0,
                                   "track_id": -1,
                                   "imgpath": img_path,
-                                  "bbox": [0, 0, 2, 2]}
+                                  "bbox": [0, 0, 2, 2],
+                                  "bbox_3d": [0, 0, 0, 2, 2, 2],                                  
+                                  }
             bbox_dets_list.append(bbox_det_dict)
 
             keypoints_dict = {"img_id":img_id,
@@ -148,23 +149,33 @@ def light_track(pose_estimator,
             for det_id in range(num_dets):
                 # obtain bbox position and track id
                 bbox_gt = get_bbox_from_gt(precomputed_dets, img_id, det_id)
-
                 # enlarge bbox by 20% with same center position
                 bbox_x1y1x2y2 = xywh_to_x1y1x2y2(bbox_gt)
                 bbox_in_xywh = enlarge_bbox(bbox_x1y1x2y2, enlarge_scale)
                 bbox_gt = x1y1x2y2_to_xywh(bbox_in_xywh)
-
                 # Keyframe: use provided bbox
                 bbox_det = bbox_gt
                 if bbox_det[2] <= 0 or bbox_det[3] <= 0 or bbox_det[2] > 2000 or bbox_det[3] > 2000:
                     bbox_det = [0, 0, 2, 2]
                     continue
+                # Same for the 3D bbox
+                try:
+                    bbox_3d_gt = precomputed_dets[img_id][det_id]['bbox_3d']
+                    bbox_x1y1z1x2y2z2 = xyzwhd_to_x1y1z1x2y2z2(bbox_3d_gt)
+                    bbox_in_xyzwhd = enlarge_bbox_3d(bbox_x1y1z1x2y2z2, enlarge_scale)
+                    bbox_gt = x1y1z1x2y2z2_to_xyzwhd(bbox_in_xyzwhd)   
+                except KeyError:
+                    print('bbox_3d KeyError!')
+                    bbox_3d_gt = [0,0,0,2,2,2]
+                bbox_3d_det = bbox_3d_gt
+
 
                 # update current frame bbox
                 bbox_det_dict = {"img_id":img_id,
                                  "det_id":det_id,
                                  "imgpath": img_path,
-                                 "bbox":bbox_det}
+                                 "bbox":bbox_det,
+                                 "bbox_3d":bbox_3d_det}
                 # obtain keypoints for each bbox position in the keyframe
                 keypoints = inference_keypoints(pose_estimator, bbox_det_dict)[0]["keypoints"]
                 keypoints_gt = keypoints
@@ -173,7 +184,8 @@ def light_track(pose_estimator,
                     track_id = next_id
                     next_id += 1
                 else:
-                    track_id = get_track_id_SpatialConsistency(bbox_gt, bbox_dets_list_list, img_id)
+                    # track_id = get_track_id_SpatialConsistency(bbox_gt, bbox_dets_list_list, img_id)
+                    track_id = get_track_id_SpatialConsistency_3d(bbox_3d_gt, bbox_dets_list_list, img_id)
                     if track_id == -1:
                         track_id = get_track_id_SGCN(bbox_gt, bbox_dets_list_list, keypoints_gt, keypoints_list_list, img_id)
 
@@ -190,7 +202,8 @@ def light_track(pose_estimator,
                                  "det_id":det_id,
                                  "track_id":track_id,
                                  "imgpath": img_path,
-                                 "bbox":bbox_det}
+                                 "bbox":bbox_det,
+                                 "bbox_3d":bbox_3d_det}
                 bbox_dets_list.append(bbox_det_dict)
 
                 # update current frame keypoints
@@ -224,6 +237,12 @@ def light_track(pose_estimator,
 
                 # next frame bbox
                 bbox_det_next = get_bbox_from_keypoints(keypoints)
+                try:
+                    bbox_3d_det_next = precomputed_dets[img_id-1][det_id]['bbox_3d']
+                except KeyError:
+                    print('bbox_3d KeyError Not in keyframe!')
+                    bbox_3d_det_next = [0,0,0,2,2,2]
+
                 if bbox_det_next[2] == 0 or bbox_det_next[3] == 0:
                     bbox_det_next = [0, 0, 2, 2]
                 assert(bbox_det_next[2] != 0 and bbox_det_next[3] != 0) # width and height must not be zero
@@ -231,7 +250,8 @@ def light_track(pose_estimator,
                                      "det_id":det_id,
                                      "track_id":track_id,
                                      "imgpath": img_path,
-                                     "bbox":bbox_det_next}
+                                     "bbox":bbox_det_next,
+                                     "bbox_3d":bbox_3d_det_next}
 
                 # next frame keypoints
                 keypoints_next = inference_keypoints(pose_estimator, bbox_det_dict_next)[0]["keypoints"]
@@ -348,6 +368,31 @@ def get_track_id_SpatialConsistency(bbox_gt, bbox_dets_list_list, img_id):
     else:
         return -1
 
+def get_track_id_SpatialConsistency_3d(bbox_3d_gt, bbox_dets_list_list, img_id):
+    # get bboxes from previous frame
+    bbox_dets_list = bbox_dets_list_list[img_id - 1]
+
+    thresh = 0.3
+    max_iou_score = -1000
+    max_index = -1
+    bbox_gt = [bbox_3d_gt[0], bbox_3d_gt[1], bbox_3d_gt[3], bbox_3d_gt[4]] #(X,Y,W,H)
+
+    for bbox_index, bbox_det_dict in enumerate(bbox_dets_list):
+        # bbox_det = bbox_det_dict["bbox"]
+        bbox_det = [bbox_3d_gt[0], bbox_3d_gt[1], bbox_3d_gt[3], bbox_3d_gt[4]] #(X,Y,W,H)
+
+        boxA = xywh_to_x1y1x2y2(bbox_gt)
+        boxB = xywh_to_x1y1x2y2(bbox_det)
+        iou_score = iou(boxA, boxB)
+        if iou_score > max_iou_score:
+            max_iou_score = iou_score
+            max_index = bbox_index
+
+    if max_iou_score > thresh:
+        return bbox_dets_list[max_index]["track_id"]
+    else:
+        return -1
+
 
 def get_pose_matching_score(keypoints_A, keypoints_B, bbox_A, bbox_B):
     if keypoints_A == [] or keypoints_B == []:
@@ -424,6 +469,8 @@ def iou(boxA, boxB):
     return iou
 
 
+
+
 def load_gt_dets_mot(json_folder_input_path):
     ''' load all detections in a video by reading json folder'''
     if json_folder_input_path.endswith(".json"):
@@ -475,6 +522,10 @@ def standard_to_dicts(dets_standard, bbox_thresh = 0):
             det = {}
             det['image_id'] = det_standard['image']['id']
             det['bbox'] = det_standard['candidates'][j]['det_bbox']
+            try:
+                det['bbox_3d'] = det_standard['candidates'][j]['bbox_3d']
+            except KeyError:
+                pass
             det['bbox_score'] = det_standard['candidates'][j]['det_score']
             det['imgpath'] = os.path.join(det_standard['image']['folder'], det_standard['image']['name'])
             if det['bbox_score'] >= bbox_thresh:
@@ -544,6 +595,34 @@ def enlarge_bbox(bbox, scale):
     bbox_enlarged = [min_x, min_y, max_x, max_y]
     return bbox_enlarged
 
+def enlarge_bbox_3d(bbox, scale):
+    assert(scale > 0)
+    min_x, min_y, min_z, max_x, max_y, max_z = bbox
+    margin_x = int(0.5 * scale * (max_x - min_x))
+    margin_y = int(0.5 * scale * (max_y - min_y))
+    margin_z = int(0.5 * scale * (max_z - min_z))
+    if margin_x < 0: margin_x = 2
+    if margin_y < 0: margin_y = 2
+    if margin_z < 0: margin_z = 2
+
+    min_x -= margin_x
+    max_x += margin_x
+    min_y -= margin_y
+    max_y += margin_y    
+    min_z -= margin_z
+    max_z += margin_z
+
+    width = max_x - min_x
+    height = max_y - min_y
+    depth = max_z - min_z
+    # if max_y < 0 or max_x < 0 or width <= 0 or height <= 0 or width > 2000 or height > 2000:
+    #     min_x=0
+    #     max_x=2
+    #     min_y=0
+    #     max_y=2
+
+    bbox_enlarged = [min_x, min_y, min_z, max_x, max_y, max_z]
+    return bbox_enlarged
 
 def inference_keypoints(pose_estimator, test_data):
     cls_dets = test_data["bbox"]
@@ -753,12 +832,20 @@ def x1y1x2y2_to_xywh(det):
     w, h = int(x2) - int(x1), int(y2) - int(y1)
     return [x1, y1, w, h]
 
+def x1y1z1x2y2z2_to_xyzwhd(det):
+    x1, y1, z1, x2, y2, z2 = det
+    w, h, d = int(x2) - int(x1), int(y2) - int(y1), int(z2) - int(z1)
+    return [x1, y1, z1, w, h, d]
 
 def xywh_to_x1y1x2y2(det):
     x1, y1, w, h = det
     x2, y2 = x1 + w, y1 + h
     return [x1, y1, x2, y2]
 
+def xyzwhd_to_x1y1z1x2y2z2(det):
+    x1, y1, z1, w, h, d = det
+    x2, y2, z2 = x1 + w, y1 + h, z1+d
+    return [x1, y1, z1, x2, y2, z2]
 
 def next_img_path(img_path):
     folder_path, img_name = os.path.split(img_path)
@@ -795,7 +882,8 @@ if __name__ == '__main__':
     # import os
     # os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID" # see issue #152
     # os.environ["CUDA_VISIBLE_DEVICES"]="1"
-
+    flag_visualize = False
+    flag_nms = False #Default is False, unless you know what you are doing
 
     global args
     args = parse_args()
@@ -805,21 +893,27 @@ if __name__ == '__main__':
     # initialize pose estimator
     pose_estimator = Tester(Network(), cfg)
     pose_estimator.load_weights(args.test_model)
-
+    
     if args.dataset_split == "posetrack18_val":
         image_folder = "data/Data_2018/posetrack_data/images/val/"
         if args.det_or_gt == "gt":
             detections_openSVAI_folder = "data/Data_2018/posetrack_data/annotations_openSVAI/"
         elif args.det_or_gt == "det":
             # detections_openSVAI_folder = "data/Data_2018/posetrack_data/detections_openSVAI/"
-            detections_openSVAI_folder = "DeformConv_FPN_RCNN_detect_CPN_format"
+            # detections_openSVAI_folder = "data/Data_2018/posetrack_data/DeformConv_FPN_RCNN_detect/"
+            detections_CPNformat_folder = "DeformConv_FPN_RCNN_detect_CPN_format"
 
-        output_json_folder = "data/Data_2018/posetrack_results/lighttrack/results_openSVAI/"
+        output_json_folder = "data/Data_2018/posetrack_results/lighttrack/results_bbox_3d_openSVAI_new_xyz/"
+        if not osp.exists(output_json_folder):
+            print("output path %s dosen't exists!" %output_json_folder)
+            os.makedirs(output_json_folder) 
+            print ("---  new folder...  ---")
+            print ("---  OK  ---"    )
 
     visualize_folder = "data/Data_2018/posetrack_results/lighttrack/visualize/"
     output_video_folder = "data/Data_2018/videos/"
 
-    det_file_paths = get_immediate_childfile_paths(detections_openSVAI_folder)
+    det_file_paths = get_immediate_childfile_paths(detections_CPNformat_folder)
 
     for det_file_path in det_file_paths:
 
@@ -835,5 +929,5 @@ if __name__ == '__main__':
         light_track(pose_estimator,
                     det_file_path, output_json_path,
                     image_subfolder, visualize_subfolder, output_video_path)
-
-        print("Finished video {}".format(output_video_path))
+        if flag_visualize:
+            print("Finished video {}".format(output_video_path))
