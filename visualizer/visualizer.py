@@ -25,7 +25,6 @@ def show_all_from_standard_json(json_file_path, classes, joint_pairs, joint_name
             img_path = os.path.join(python_data["image"]["folder"], python_data["image"]["name"])
         else:
             img_path = os.path.join(img_folder_path, python_data["image"]["name"])
-        print(img_path)
         if is_image(img_path):    img = cv2.imread(img_path)
 
         candidates = python_data["candidates"]
@@ -60,6 +59,140 @@ def show_all_from_standard_json(json_file_path, classes, joint_pairs, joint_name
             cv2.imwrite(img_output_path, img)
     return
 
+def show_all_withID_from_standard_json(json_file_path, classes, joint_pairs, joint_names, img_folder_path = None, output_folder_path = None, flag_track= False):
+    # Visualizing: Detection + Pose Estimation
+    dets = read_json_from_file(json_file_path)
+
+    for det in dets:
+        python_data = det
+
+        if img_folder_path is None:
+            img_path = os.path.join(python_data["image"]["folder"], python_data["image"]["name"])
+        else:
+            img_path = os.path.join(img_folder_path, python_data["image"]["name"])
+
+        if is_image(img_path):    img = cv2.imread(img_path)
+
+        candidates = python_data["candidates"]
+        for candidate in candidates:
+            bbox = np.array(candidate["det_bbox"]).astype(int)
+            score = candidate["det_score"]
+            if score < draw_threshold: continue
+
+            '''
+            # optional: show the bounding boxes
+            if flag_track is True:
+                track_id = candidate["track_id"]
+                img = draw_bbox(img, bbox, score, classes, track_id = track_id)
+            else:
+                #img = draw_bbox(img, bbox, score, classes)
+                img = draw_bbox(img, bbox, score, classes, -1, python_data["image"]["id"][0])  #for lighttrack
+            '''
+
+            pose_keypoints_2d = candidate["pose_keypoints_2d"]
+            joints = reshape_keypoints_into_joints(pose_keypoints_2d)
+
+            if flag_track is True:
+                track_id = candidate["track_id"]
+                img = show_poses_withID_from_python_data(img, joints, joint_pairs, joint_names, track_id = track_id)
+            else:
+                raise Exception("Why flag_track is NOT TRUE?")
+
+        if output_folder_path is not None:
+            create_folder(output_folder_path)
+            img_output_path = os.path.join(output_folder_path, python_data["image"]["name"])
+            cv2.imwrite(img_output_path, img)
+    return
+
+def show_all_withIdDepth_from_standard_json(json_file_path, classes, joint_pairs, joint_names, img_folder_path = None, output_folder_path = None, flag_track= False):
+    # Visualizing: Detection + Pose Estimation
+    dets = read_json_from_file(json_file_path)
+
+    for det in dets:
+        python_data = det
+
+        if img_folder_path is None:
+            img_path = os.path.join(python_data["image"]["folder"], python_data["image"]["name"])
+        else:
+            img_path = os.path.join(img_folder_path, python_data["image"]["name"])
+
+        if is_image(img_path):    img = cv2.imread(img_path)
+
+        candidates = python_data["candidates"]
+        for candidate in candidates:
+            bbox = np.array(candidate["det_bbox"]).astype(int)
+            bbox_3d = np.array(candidate["bbox_3d"]).round(2)
+            score = candidate["det_score"]
+            if score < draw_threshold: continue
+
+            # optional: show the bounding boxes
+            if flag_track is True:
+                track_id = candidate["track_id"]
+                img = draw_bbox_withDepth(img, bbox, bbox_3d, score, classes, track_id = track_id)
+            else:
+                #img = draw_bbox(img, bbox, score, classes)
+                img = draw_bbox_withDepth(img, bbox, bbox_3d, score, classes, -1, python_data["image"]["id"][0])  #for lighttrack
+
+            pose_keypoints_2d = candidate["pose_keypoints_2d"]
+            joints = reshape_keypoints_into_joints(pose_keypoints_2d)
+
+            if flag_track is True:
+                track_id = candidate["track_id"]
+                img = show_poses_from_python_data(img, joints, joint_pairs, joint_names, track_id = track_id)
+            else:
+                raise Exception("Why flag_track is NOT TRUE?")
+
+        if output_folder_path is not None:
+            create_folder(output_folder_path)
+            img_output_path = os.path.join(output_folder_path, python_data["image"]["name"])
+            cv2.imwrite(img_output_path, img)
+    return
+
+
+def show_validKeypoint_withID_from_standard_json(json_file_path, classes, joint_pairs, joint_names, img_folder_path = None, output_folder_path = None, flag_track= False):
+    # Visualizing: Detection + Pose Estimation
+    dets = read_json_from_file(json_file_path)
+
+    for det in dets:
+        python_data = det
+
+        if img_folder_path is None:
+            img_path = os.path.join(python_data["image"]["folder"], python_data["image"]["name"])
+        else:
+            img_path = os.path.join(img_folder_path, python_data["image"]["name"])
+
+        if is_image(img_path):    img = cv2.imread(img_path)
+
+        candidates = python_data["candidates"]
+        for candidate in candidates:
+            bbox = np.array(candidate["det_bbox"]).astype(int)
+            score = candidate["det_score"]
+            if score < draw_threshold: continue
+
+            '''
+            # optional: show the bounding boxes
+            if flag_track is True:
+                track_id = candidate["track_id"]
+                img = draw_bbox(img, bbox, score, classes, track_id = track_id)
+            else:
+                #img = draw_bbox(img, bbox, score, classes)
+                img = draw_bbox(img, bbox, score, classes, -1, python_data["image"]["id"][0])  #for lighttrack
+            '''
+
+            pose_keypoints_2d = candidate["pose_keypoints_2d"]
+            joints = reshape_keypoints_into_joints(pose_keypoints_2d)
+
+            if flag_track is True:
+                track_id = candidate["track_id"]
+                img = show_validPoses_withID_from_python_data(img, joints, joint_pairs, joint_names, track_id = track_id)
+            else:
+                raise Exception("Why flag_track is NOT TRUE?")
+
+        if output_folder_path is not None:
+            create_folder(output_folder_path)
+            img_output_path = os.path.join(output_folder_path, python_data["image"]["name"])
+            cv2.imwrite(img_output_path, img)
+    return
 
 def make_video_from_images(img_paths, outvid_path, fps=25, size=None,
                is_color=True, format="XVID"):

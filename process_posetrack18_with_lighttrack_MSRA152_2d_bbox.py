@@ -161,9 +161,9 @@ def light_track(pose_estimator,
                 # Same for the 3D bbox
                 try:
                     bbox_3d_gt = precomputed_dets[img_id][det_id]['bbox_3d']
-                    # bbox_x1y1z1x2y2z2 = xyzwhd_to_x1y1z1x2y2z2(bbox_3d_gt)
-                    # bbox_in_xyzwhd = enlarge_bbox_3d(bbox_x1y1z1x2y2z2, enlarge_scale)
-                    # bbox_3d_gt = x1y1z1x2y2z2_to_xyzwhd(bbox_in_xyzwhd)   
+                    bbox_x1y1z1x2y2z2 = xyzwhd_to_x1y1z1x2y2z2(bbox_3d_gt)
+                    bbox_in_xyzwhd = enlarge_bbox_3d(bbox_x1y1z1x2y2z2, enlarge_scale)
+                    bbox_3d_gt = x1y1z1x2y2z2_to_xyzwhd(bbox_in_xyzwhd)   
                 except KeyError:
                     print('bbox_3d KeyError!')
                     bbox_3d_gt = [0,0,0,2,2,2]
@@ -185,8 +185,7 @@ def light_track(pose_estimator,
                     track_id = next_id
                     next_id += 1
                 else:
-                    # track_id = get_track_id_SpatialConsistency(bbox_gt, bbox_dets_list_list, img_id)
-                    track_id = get_track_id_SpatialConsistency_3d(bbox_3d_gt, bbox_dets_list_list, img_id)
+                    track_id = get_track_id_SpatialConsistency(bbox_gt, bbox_dets_list_list, img_id)
                     if track_id == -1:
                         track_id = get_track_id_SGCN(bbox_gt, bbox_dets_list_list, keypoints_gt, keypoints_list_list, img_id)
 
@@ -905,7 +904,7 @@ if __name__ == '__main__':
         # detections_openSVAI_folder = "data/Data_2018/posetrack_data/DeformConv_FPN_RCNN_detect/"
         detections_CPNformat_folder = "DeformConv_FPN_RCNN_detect_CPN_format_with2Dkps"
 
-        output_json_folder = "data/Data_2018/posetrack_results/lighttrack/results_exp1_openSVAI"
+        output_json_folder = "data/Data_2018/posetrack_results/lighttrack/results_bbox_2d_openSVAI_allkeyfram"
         if not osp.exists(output_json_folder):
             print("output path %s dosen't exists!" %output_json_folder)
             os.makedirs(output_json_folder) 

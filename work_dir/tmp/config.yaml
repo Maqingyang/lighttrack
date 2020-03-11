@@ -1,4 +1,4 @@
-# command line: /project/lighttrack/reocrd_pose_posetrack18_with_lighttrack_MSRA152.py
+# command line: process_exp3_2.py
 
 config: graph/config/inference.yaml
 device:

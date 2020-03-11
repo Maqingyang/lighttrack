@@ -55,10 +55,6 @@ if __name__ == '__main__':
     det_file_paths = get_immediate_childfile_paths(detections_openSVAI_folder)
 
     for det_file_path in det_file_paths:
-
-
-
-
         json_name = os.path.basename(det_file_path)
         output_json_path = os.path.join(output_json_folder, json_name)
 

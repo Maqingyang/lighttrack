@@ -122,6 +122,52 @@ def draw_bbox(img, bbox, score, classes, track_id = -1, img_id = -1):
                     lineType = cv2.LINE_AA)
     return img
 
+def draw_bbox_withDepth(img, bbox, bbox_3d, score, classes, track_id = -1, img_id = -1):
+    if track_id == -1:
+        color = (255*rand(), 255*rand(), 255*rand())
+    else:
+        color_list = ['purple', 'yellow', 'blue', 'green', 'red', 'skyblue', 'navyblue', 'azure', 'slate', 'chocolate', 'olive', 'orange', 'orchid']
+        color_name = color_list[track_id % 13]
+        color = find_color_scalar(color_name)
+
+    if img_id % 10 == 0:
+        color = find_color_scalar('red')
+    elif img_id != -1:
+        color = find_color_scalar('blue')
+
+    cv2.rectangle(img,
+                  (bbox[0], bbox[1]),
+                  (bbox[0]+ bbox[2], bbox[1] + bbox[3]),
+                  color = color,
+                  thickness = 3)
+
+    cls_name = classes[0]
+    font = cv2.FONT_HERSHEY_SIMPLEX
+
+    if track_id == -1:
+        cv2.putText(img,
+                    #'{:s} {:.2f}'.format(cls_name, score),
+                    '{:s}'.format(cls_name),
+                    (bbox[0], bbox[1]-5),
+                    font,
+                    fontScale=0.8,
+                    color=color,
+                    thickness = 2,
+                    lineType = cv2.LINE_AA)
+    else:
+        cv2.putText(img,
+                    #'{:s} {:.2f}'.format("ID:"+str(track_id), score),
+                    '{:s}'.format("ID:"+str(track_id)+" "+np.array2string(bbox_3d[:3], formatter={'float_kind':lambda x: "%.1f" % x})),
+                    (bbox[0], bbox[1]-5),
+                    font,
+                    fontScale=0.8,
+                    color=color,
+                    thickness = 2,
+                    lineType = cv2.LINE_AA)
+
+
+
+    return img
 
 def show_boxes_from_standard_json(json_file_path, classes, img_folder_path = None, output_folder_path = None, track_id = -1):
     dets = read_json_from_file(json_file_path)

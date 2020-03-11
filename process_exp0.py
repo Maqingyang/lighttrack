@@ -378,15 +378,14 @@ def get_track_id_SpatialConsistency_3d(bbox_3d_gt, bbox_dets_list_list, img_id):
     thresh = 0.3
     max_iou_score = -1000
     max_index = -1
-    bbox_gt = [bbox_3d_gt[0], bbox_3d_gt[1], bbox_3d_gt[3], bbox_3d_gt[4]] #(X,Y,W,H)
 
     for bbox_index, bbox_det_dict in enumerate(bbox_dets_list):
         # bbox_det = bbox_det_dict["bbox"]
-        bbox_det = [bbox_3d_gt[0], bbox_3d_gt[1], bbox_3d_gt[3], bbox_3d_gt[4]] #(X,Y,W,H)
+        bbox_3d_det = bbox_det_dict['bbox_3d'] 
 
-        boxA = xywh_to_x1y1x2y2(bbox_gt)
-        boxB = xywh_to_x1y1x2y2(bbox_det)
-        iou_score = iou(boxA, boxB)
+        boxA = xyzwhd_to_x1y1z1x2y2z2(bbox_3d_gt)
+        boxB = xyzwhd_to_x1y1z1x2y2z2(bbox_3d_det)
+        iou_score = iou_3d(boxA, boxB)
         if iou_score > max_iou_score:
             max_iou_score = iou_score
             max_index = bbox_index
@@ -396,6 +395,31 @@ def get_track_id_SpatialConsistency_3d(bbox_3d_gt, bbox_dets_list_list, img_id):
     else:
         return -1
 
+def get_track_id_SpatialConsistency_3d_sanity(bbox_3d_gt, bbox_dets_list_list, img_id):
+    # get bboxes from previous frame
+    bbox_dets_list = bbox_dets_list_list[img_id - 1]
+
+    thresh = 0.3
+    max_iou_score = -1000
+    max_index = -1
+
+    for bbox_index, bbox_det_dict in enumerate(bbox_dets_list):
+        # bbox_det = bbox_det_dict["bbox"]
+        bbox_3d_det = bbox_det_dict['bbox_3d'] 
+
+        boxA = xyzwhd_to_x1y1z1x2y2z2(bbox_3d_gt)
+        boxB = xyzwhd_to_x1y1z1x2y2z2(bbox_3d_det)
+        boxA = [boxA[0],boxA[1],boxA[3],boxA[4]]
+        boxB = [boxB[0],boxB[1],boxB[3],boxB[4]]
+        iou_score = iou(boxA, boxB)
+        if iou_score > max_iou_score:
+            max_iou_score = iou_score
+            max_index = bbox_index
+
+    if max_iou_score > thresh:
+        return bbox_dets_list[max_index]["track_id"]
+    else:
+        return -1
 
 def get_pose_matching_score(keypoints_A, keypoints_B, bbox_A, bbox_B):
     if keypoints_A == [] or keypoints_B == []:
@@ -471,7 +495,31 @@ def iou(boxA, boxB):
     # return the intersection over union value
     return iou
 
+def iou_3d(boxA, boxB):
+    # box: (x1, y1, z1, x2, y2, z2)
+    # determine the (x, y)-coordinates of the intersection rectangle
+    xA = max(boxA[0], boxB[0])
+    yA = max(boxA[1], boxB[1])
+    zA = max(boxA[2], boxB[2])
+    xB = min(boxA[3], boxB[3])
+    yB = min(boxA[4], boxB[4])
+    zB = min(boxA[5], boxB[5])
 
+    # compute the area of intersection rectangle
+    interArea = max(0, xB - xA) * max(0, yB - yA) * max(0, zB - zA)
+
+    # compute the area of both the prediction and ground-truth
+    # rectangles
+    boxAArea = (boxA[3] - boxA[0]) * (boxA[4] - boxA[1]) * (boxA[5] - boxA[2])
+    boxBArea = (boxB[3] - boxB[0]) * (boxB[4] - boxB[1]) * (boxB[5] - boxB[2])
+
+    # compute the intersection over union by taking the intersection
+    # area and dividing it by the sum of prediction + ground-truth
+    # areas - the interesection area
+    iou = interArea / float(boxAArea + boxBArea - interArea)
+
+    # return the intersection over union value
+    return iou
 
 
 def load_gt_dets_mot(json_folder_input_path):
@@ -837,7 +885,7 @@ def x1y1x2y2_to_xywh(det):
 
 def x1y1z1x2y2z2_to_xyzwhd(det):
     x1, y1, z1, x2, y2, z2 = det
-    w, h, d = int(x2) - int(x1), int(y2) - int(y1), int(z2) - int(z1)
+    w, h, d = x2 - x1, y2 - y1, z2 - z1
     return [x1, y1, z1, w, h, d]
 
 def xywh_to_x1y1x2y2(det):
@@ -847,7 +895,7 @@ def xywh_to_x1y1x2y2(det):
 
 def xyzwhd_to_x1y1z1x2y2z2(det):
     x1, y1, z1, w, h, d = det
-    x2, y2, z2 = x1 + w, y1 + h, z1+d
+    x2, y2, z2 = x1 + w, y1 + h, z1 + d
     return [x1, y1, z1, x2, y2, z2]
 
 def next_img_path(img_path):

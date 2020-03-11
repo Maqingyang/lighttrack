@@ -5,10 +5,13 @@
 '''
 import sys, os
 sys.path.append(os.path.abspath("utils/"))
+import os.path as osp
 
 from utils_json import *
 from utils_io_folder import *
 import argparse
+
+from tqdm import tqdm
 
 dataset_splits = ['whole', 'val', 'test']
 dataset_split = "val"
@@ -152,18 +155,26 @@ def standard_to_PoseTrack_17(standard_keypoints_ret, gt_python_data, mode_track 
 
 def batch_standard_to_PoseTrack_17(dataset_split = "light_track", mode = "pose", bbox_thresh = 0, drop_thresh = 0):
     if dataset_split == "light_track":
-        input_json_folder_base = "data/Data_2018/posetrack_results/lighttrack/results_bbox_3d_openSVAI_new"
+        input_json_folder_base = "data/Data_2018/posetrack_results/lighttrack/results_exp3_2_openSVAI"
         gt_json_folder_base = "data/Data_2018/posetrack_data/annotations/val"
         # output_json_folder_base = "data/Data_2018/predictions_lighttrack/"
-        output_json_folder_base = "data/Data_2018/predictions_lighttrack_bbox_3d_new/"
+        output_json_folder_base = "data/Data_2018/predictions_exp3_2_openSVAI"
+
+        print(input_json_folder_base,output_json_folder_base)
+        if not osp.exists(output_json_folder_base):
+            print("output path %s dosen't exists!" %output_json_folder_base)
+            os.makedirs(output_json_folder_base) 
+            print ("---  new folder...  ---")
+            print ("---  OK  ---"    )
 
     gt_json_file_paths = get_immediate_childfile_paths(gt_json_folder_base, ext=".json")
-    for gt_json_file_path in gt_json_file_paths:
+    for gt_json_file_path in tqdm(gt_json_file_paths):
         json_file_name = os.path.basename(gt_json_file_path)
 
         input_json_file_path = os.path.join(input_json_folder_base, json_file_name)
+        
         output_json_file_path = os.path.join(output_json_folder_base, json_file_name)
-        print("Reading Json: ", input_json_file_path)
+        # print("Reading Json: ", input_json_file_path)
 
         rets_video_standard = read_json_from_file(input_json_file_path)
         gt_python_data = read_json_from_file(gt_json_file_path)
@@ -177,30 +188,30 @@ def batch_standard_to_PoseTrack_17(dataset_split = "light_track", mode = "pose",
     return
 
 
-def batch_standard_to_PoseTrack_18(dataset_split = "val", mode = "pose", bbox_thresh = 0):
-    if dataset_split == "light_track":
-        input_json_folder_base = "data/Data_2018/posetrack_results/lighttrack/results_bbox_3d_openSVAI"
-        gt_json_folder_base = "data/Data_2018/posetrack_data/annotations/val"
-        # output_json_folder_base = "data/Data_2018/predictions_lighttrack/"
-        output_json_folder_base = "data/Data_2018/predictions_lighttrack_bbox_3d/"
+# def batch_standard_to_PoseTrack_18(dataset_split = "val", mode = "pose", bbox_thresh = 0):
+#     if dataset_split == "light_track":
+#         input_json_folder_base = "data/Data_2018/posetrack_results/lighttrack/results_bbox_3d_openSVAI_new"
+#         gt_json_folder_base = "data/Data_2018/posetrack_data/annotations/val"
+#         # output_json_folder_base = "data/Data_2018/predictions_lighttrack/"
+#         output_json_folder_base = "data/Data_2018/predictions_lighttrack_bbox_3d_new/"
 
-    gt_json_file_paths = get_immediate_childfile_paths(gt_json_folder_base, ext=".json")
-    for gt_json_file_path in gt_json_file_paths:
-        json_file_name = os.path.basename(gt_json_file_path)
-        input_json_file_path = os.path.join(input_json_folder_base, json_file_name)
-        output_json_file_path = os.path.join(output_json_folder_base, json_file_name)
-        print("Reading Json: ", input_json_file_path)
+#     gt_json_file_paths = get_immediate_childfile_paths(gt_json_folder_base, ext=".json")
+#     for gt_json_file_path in gt_json_file_paths:
+#         json_file_name = os.path.basename(gt_json_file_path)
+#         input_json_file_path = os.path.join(input_json_folder_base, json_file_name)
+#         output_json_file_path = os.path.join(output_json_folder_base, json_file_name)
+#         print("Reading Json: ", input_json_file_path)
 
-        rets_video_standard = read_json_from_file(input_json_file_path)
-        gt_python_data = read_json_from_file(gt_json_file_path)
+#         rets_video_standard = read_json_from_file(input_json_file_path)
+#         gt_python_data = read_json_from_file(gt_json_file_path)
 
-        if mode == "pose":
-            rets_video_posetrack_18 = standard_to_PoseTrack_18(rets_video_standard, gt_python_data, False, bbox_thresh)
-        elif mode == "track":
-            rets_video_posetrack_18 = standard_to_PoseTrack_18(rets_video_standard, gt_python_data, True, bbox_thresh)
+#         if mode == "pose":
+#             rets_video_posetrack_18 = standard_to_PoseTrack_18(rets_video_standard, gt_python_data, False, bbox_thresh)
+#         elif mode == "track":
+#             rets_video_posetrack_18 = standard_to_PoseTrack_18(rets_video_standard, gt_python_data, True, bbox_thresh)
 
-        write_json_to_file(rets_video_posetrack_18, output_json_file_path, flag_verbose = False)
-    return
+#         write_json_to_file(rets_video_posetrack_18, output_json_file_path, flag_verbose = False)
+#     return
 
 
 def find_id_from_annotation_by_name(gt_images_info, img_path):
@@ -223,10 +234,10 @@ def find(lst, key, value):
 if __name__ == "__main__":
     def parse_args():
         parser = argparse.ArgumentParser()
-        parser.add_argument('--bbox_thresh', '-e', type=float, dest='bbox_thresh', default = 0)
-        parser.add_argument('--drop_thresh', '-r', type=float, dest='drop_thresh', default = 0)
-        parser.add_argument('--mode', '-m', type=str, dest='mode', default = "pose")
-        parser.add_argument('--dataset_split', '-d', type=str, dest='dataset_split', default = "val")
+        parser.add_argument('--bbox_thresh', '-e', type=float, dest='bbox_thresh', default = 0.4)
+        parser.add_argument('--drop_thresh', '-r', type=float, dest='drop_thresh', default = 0.8)
+        parser.add_argument('--mode', '-m', type=str, dest='mode', default = "track")
+        parser.add_argument('--dataset_split', '-d', type=str, dest='dataset_split', default = "lighttrack")
         parser.add_argument('--format', '-f', type=str, dest='format', default = "17")
         args = parser.parse_args()
         return args
@@ -246,6 +257,7 @@ if __name__ == "__main__":
                                        args.drop_thresh)
 
     elif args.format == "18":
+        raise Exception("18")
         # Generate PoseTrack18 format jsons for quantitative evaluation
         batch_standard_to_PoseTrack_18(args.dataset_split,
                                        args.mode,

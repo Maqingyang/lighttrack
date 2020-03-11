@@ -124,6 +124,43 @@ def show_poses_from_python_data(img, joints, joint_pairs, joint_names, flag_demo
         cv2.waitKey(0.1)
     return img
 
+def show_poses_withID_from_python_data(img, joints, joint_pairs, joint_names, flag_demo_poses = False, track_id = -1, flag_only_draw_sure=False):
+    img = add_joints_to_image(img, joints)
+
+    if track_id == -1: # do pose estimation visualization
+        img = add_joint_connections_to_image(img, joints, joint_pairs, joint_names)
+    else:  # do pose tracking visualization
+        candidate_joint_pairs = joint_pairs.copy()
+        color_name = color_list[track_id % 13]
+        for i in range(len(candidate_joint_pairs)):   candidate_joint_pairs[i][2] = color_name
+        img = add_joint_connections_to_image(img, joints, candidate_joint_pairs, joint_names, flag_only_draw_sure)
+        valid_joints = joints[joints[:,2]>0.6]
+        x_min, y_min, _ = np.min(joints,axis=0)
+        x_max, y_max, _ = np.min(joints,axis=0)
+        img = cv2.putText(img,"ID %d" %track_id,(x_min-10,y_min-10), cv2.FONT_HERSHEY_TRIPLEX, 2, find_color_scalar(color_name), 2)
+    if flag_demo_poses is True:
+        cv2.imshow("pose image", img)
+        cv2.waitKey(0.1)
+    return img
+
+def show_validPoses_withID_from_python_data(img, joints, joint_pairs, joint_names, flag_demo_poses = False, track_id = -1, flag_only_draw_sure=False):
+    img = add_joints_to_image(img, joints)
+
+    if track_id == -1: # do pose estimation visualization
+        img = add_Validjoint_connections_to_image(img, joints, joint_pairs, joint_names)
+    else:  # do pose tracking visualization
+        candidate_joint_pairs = joint_pairs.copy()
+        color_name = color_list[track_id % 13]
+        for i in range(len(candidate_joint_pairs)):   candidate_joint_pairs[i][2] = color_name
+        img = add_Validjoint_connections_to_image(img, joints, candidate_joint_pairs, joint_names, flag_only_draw_sure)
+        valid_joints = joints[joints[:,2]>0.6]
+        x_min, y_min, _ = np.min(joints,axis=0)
+        x_max, y_max, _ = np.min(joints,axis=0)
+        img = cv2.putText(img,"ID %d" %track_id,(x_min-10,y_min-10), cv2.FONT_HERSHEY_TRIPLEX, 2, find_color_scalar(color_name), 2)
+    if flag_demo_poses is True:
+        cv2.imshow("pose image", img)
+        cv2.waitKey(0.1)
+    return img
 
 def add_joints_to_image(img_demo, joints):
     for joint in joints:
@@ -131,7 +168,6 @@ def add_joints_to_image(img_demo, joints):
         #cv2.circle(img_demo, (i, j), radius=8, color=(255,255,255), thickness=2)
         cv2.circle(img_demo, (i, j), radius=2, color=(255,255,255), thickness=2)
     return img_demo
-
 
 def add_joint_connections_to_image(img_demo, joints, joint_pairs, joint_names, flag_only_draw_sure = False):
     for joint_pair in joint_pairs:
@@ -151,6 +187,26 @@ def add_joint_connections_to_image(img_demo, joints, joint_pairs, joint_names, f
         if flag_only_draw_sure is False:
             sure1 = sure2 = 1
         if sure1 > 0.8 or sure2 > 0.8:
+            #cv2.line(img_demo, (x1, y1), (x2, y2), color, thickness=8)
+            cv2.line(img_demo, (x1, y1), (x2, y2), color, thickness=4)
+    return img_demo
+    
+def add_Validjoint_connections_to_image(img_demo, joints, joint_pairs, joint_names, flag_only_draw_sure = False):
+    for joint_pair in joint_pairs:
+        ind_1 = joint_names.index(joint_pair[0])
+        ind_2 = joint_names.index(joint_pair[1])
+        if flag_color_sticks is True:
+            color = find_color_scalar(joint_pair[2])
+        else:
+            color = find_color_scalar('red')
+
+        x1, y1, sure1 = joints[ind_1]
+        x2, y2, sure2 = joints[ind_2]
+
+        if x1 <= 5 and y1<= 5: continue
+        if x2 <= 5 and y2<= 5: continue
+
+        if sure1 > 0.1 or sure2 > 0.1:
             #cv2.line(img_demo, (x1, y1), (x2, y2), color, thickness=8)
             cv2.line(img_demo, (x1, y1), (x2, y2), color, thickness=4)
     return img_demo
